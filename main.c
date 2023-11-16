@@ -1,155 +1,83 @@
 #include "monty.h"
-unsigned int line_number = 0;
+stack_t *head = NULL;
 
 /**
- * main - Entry point for the Monty byte code interpreter.
- * @argc: Number of command-line arguments.
- * @argv: Array of command-line argument strings.
- *
- * This function initializes the interpreter, reads the Monty
- * bytecode from
- * the specified file, and executes the corresponding
- * operations.
- *
- * Return: Always 0 on success.
+ * main - entry point
+ * @argc: arguments count
+ * @argv: list of arguments
+ * Return: always 0
  */
+
 int main(int argc, char *argv[])
 {
-	FILE *fpc;
-	stack_t *top = NULL;
-
 	if (argc != 2)
 	{
 		fprintf(stderr, "USAGE: monty file\n");
 		exit(EXIT_FAILURE);
 	}
-	fpc = fopen(argv[1], "r");
-	if (!fpc)
+	open_file(argv[1]);
+	free_nodes();
+	return (0);
+}
+
+/**
+ * create_node - Creates a node for program.
+ * @n: Number to go inside the node.
+ * Return: Upon sucess a pointer to the node. Otherwise NULL.
+ */
+stack_t *create_node(int n)
+{
+	stack_t *node;
+
+	node = malloc(sizeof(stack_t));
+	if (node == NULL)
+		err(4);
+	node->next = NULL;
+	node->prev = NULL;
+	node->n = n;
+	return (node);
+}
+
+/**
+ * free_nodes - Frees nodes in the stack.
+ */
+void free_nodes(void)
+{
+	stack_t *tmp;
+
+	if (head == NULL)
+		return;
+
+	while (head != NULL)
 	{
-		fprintf(stderr, "Error: Can't open file %s\n", argv[1]);
+		tmp = head;
+		head = head->next;
+		free(tmp);
+	}
+}
+
+
+/**
+ * add_to_queue - Adds a node to the nqueue.
+ * @new_node: Pointer to the new node.
+ * @ln: line number of the opcode.
+ */
+void add_to_queue(stack_t **new_node, __attribute__((unused))unsigned int ln)
+{
+	stack_t *tmp;
+
+	if (new_node == NULL || *new_node == NULL)
 		exit(EXIT_FAILURE);
-	}
-	read_file(fpc, &top);
-	fclose(fpc);
-	free_stack(top);
-	return (0);
-}
-/**
- * read_file - Reads Monty byte code from a file and executes
- * corresponding operations.
- * @fpc: Pointer to the FILE structure of the Monty bytecode file.
- * @top: Pointer to the top of the stack.
- *
- * This function reads each line from the Monty bytecode file,
- * processes it into
- * tokens, and executes the corresponding stack operations.
- *
- * Return: Always 0.
- */
-int read_file(FILE *fpc, stack_t **top)
-{
-	char *line = NULL;
-	size_t size_line = 0;
-	ssize_t read;
-	int status;
-
-	while ((read = getline(&line, &size_line, fpc)) != -1)
+	if (head == NULL)
 	{
-		line_number++;
-		status = token_line(line, top);
-		if (status == -1)
-		{
-			fclose(fpc);
-			free(line);
-			exit(EXIT_FAILURE);
-		}
-		free(line);
-		line = NULL;
-		size_line = 0;
+		head = *new_node;
+		return;
 	}
-	free(line);
-	return (0);
-}
-/**
- * token_line - Processes a line of tokens representing
- * stack operations.
- * @line: Input line containing space/tab-separated tokens.
- * @top: Pointer to the top of the stack.
- *
- * This function tokenizes the input line, identifies
- * stack operations, and executes
- * the corresponding functions with their values on the stack.
- * Return: succes or fail
- */
-int token_line(char *line, stack_t **top)
-{
-	char *token, *value;
-	int i;
-	instruction_t *ops = init_ops();
-	size_t len = strlen(line);
+	tmp = head;
+	while (tmp->next != NULL)
+		tmp = tmp->next;
 
-	if (len > 0 && line[len - 1] == '\n')
-	{
-		line[len - 1] = '\0';
-	}
-	token = strtok(line, " \t");
-	if (token == NULL)
-		return (1);
-	i = 0;
-	while (ops[i].opcode)
-	{
-		if (strcmp(token, ops[i].opcode) == 0)
-		{
-			value = strtok(NULL, " \t");
-			/* return ops[i].f*/
-			if (value)
-			{
-				ops[i].f(top, atoi(value));
-				return (0);
-			}
-			else if (strcmp(ops[i].opcode, "push") == 0 && !value)
-			{
-				free_stack(*top);
-				fprintf(stderr, "L%d: can't push an empty value", line_number);
-				return (-1);
-			}
-			else
-			{
-				ops[i].f(top, 0);
-				return (0);
-			}
-		}
-		i++;
-	}
-	return (1);
-}
+	tmp->next = *new_node;
+	(*new_node)->prev = tmp;
 
-/**
- * init_ops - Initializes the array of operations.
- *
- * This function creates and returns an array of instruction_t
- * structures, each containing an opcode and its corresponding function.
- *
- * Return: Array of operations.
- */
-instruction_t *init_ops(void)
-{
-	static instruction_t ops[] = {
-		{"push", push_element},
-		{"pall", print_stack},
-		{"pint", print_top},
-		{"pop", pop_element},
-		{"swap", swap_element},
-		{"nop", nop_element},
-		{"add", op_add},
-		{"sub", op_sub},
-		{"mul", op_mul},
-		{"div", op_div},
-		{"mod", op_mod},
-		{"pchar", op_pchar},
-		{"pstr", op_pstr},
-		{"rotl", op_rotl},
-		{NULL, NULL}
-	};
-	return (ops);
 }
